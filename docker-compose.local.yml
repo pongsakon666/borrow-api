@@ -1,0 +1,59 @@
+# Infra สำหรับ dev local — PostgreSQL 16 + Redis 7 + RabbitMQ 3 (README §9)
+# ใช้: docker compose -f docker-compose.local.yml up -d
+# Kafka ยังไม่ใส่ในเฟสแรก (README §8.1) — เพิ่มทีหลังเมื่อมี use case จริง
+
+name: rent-borrow
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: rent-borrow-postgres
+    environment:
+      POSTGRES_USER: rentborrow
+      POSTGRES_PASSWORD: rentborrow
+      POSTGRES_DB: rentborrow
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U rentborrow -d rentborrow']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: rent-borrow-redis
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rent-borrow-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: rentborrow
+      RABBITMQ_DEFAULT_PASS: rentborrow
+    ports:
+      - '5672:5672' # AMQP
+      - '15672:15672' # Management UI → http://localhost:15672
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
